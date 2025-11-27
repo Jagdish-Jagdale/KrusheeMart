@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/martlogo.png";
-import hero1 from "../assets/hero1.webp";
-import hero2 from "../assets/hero2.webp";
-import hero3 from "../assets/hero3.webp";
+
 import nutrientsImg from "../assets/nutrients.png";
-import fungicidesImg from "../assets/fungicides.png";
-import insecticidesImg from "../assets/insecticides.png";
-import seedImg from "../assets/seeds.png";
-import weedicidesImg from "../assets/weedicides.png";
-import tissueCultureImg from "../assets/tissue.png";
-import fertilizersImg from "../assets/fertilizers.png";
-import hardwareImg from "../assets/hardware.png";
-import { FiShoppingCart, FiUser } from "react-icons/fi";
+
 import { useAuth } from "../context/AuthContext";
 import Header from "./Header";
 import { db } from "../firebase";
@@ -442,7 +432,7 @@ const LandingPage = () => {
 
   const buyNow = (product) => {
     // Navigate to payment page with product data
-    navigate('/payment', {
+    navigate("/payment", {
       state: {
         product: {
           id: product.id,
@@ -450,11 +440,11 @@ const LandingPage = () => {
           image: product.image,
           price: product.discountPrice || product.price,
           mrp: product.mrp || product.price,
-          discountPrice: product.discountPrice
+          discountPrice: product.discountPrice,
         },
         quantity: 1,
-        fromBuyNow: true
-      }
+        fromBuyNow: true,
+      },
     });
   };
 
@@ -481,9 +471,9 @@ const LandingPage = () => {
               src={heroImages[heroIdx]}
               alt={`hero-${heroIdx}`}
               className="absolute inset-0 w-full h-full  transition-opacity duration-700"
-              style={{ 
+              style={{
                 transform: "translateZ(0)",
-                imageRendering: "high-quality"
+                imageRendering: "high-quality",
               }}
               loading="eager"
             />
@@ -762,8 +752,12 @@ const LandingPage = () => {
       <section className="w-full py-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="flex items-center justify-between mb-8 px-4 sm:px-6">
           <div>
-            <h4 className="text-2xl md:text-3xl font-bold text-gray-900">Shop by Brands</h4>
-            <p className="text-sm md:text-base text-gray-500 mt-1">Trusted partners</p>
+            <h4 className="text-2xl md:text-3xl font-bold text-gray-900">
+              Shop by Brands
+            </h4>
+            <p className="text-sm md:text-base text-gray-500 mt-1">
+              Trusted partners
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -799,7 +793,10 @@ const LandingPage = () => {
               ))
             ) : brands.length > 0 ? (
               brands.map((brand) => (
-                <div key={brand.id} className="flex-shrink-0 w-56 text-center group">
+                <div
+                  key={brand.id}
+                  className="flex-shrink-0 w-56 text-center group"
+                >
                   <div className="mx-auto w-52 h-32 bg-white rounded-xl shadow-md flex items-center justify-center p-4 hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-100">
                     <img
                       src={brand.image}
@@ -1144,14 +1141,16 @@ const LandingPage = () => {
                     Add to Cart
                   </button>
                   <button
-                    onClick={() => buyNow({
-                      id: f.id,
-                      name: f.name,
-                      image: f.img,
-                      price: f.price,
-                      discountPrice: f.discountPrice,
-                      mrp: f.price
-                    })}
+                    onClick={() =>
+                      buyNow({
+                        id: f.id,
+                        name: f.name,
+                        image: f.img,
+                        price: f.price,
+                        discountPrice: f.discountPrice,
+                        mrp: f.price,
+                      })
+                    }
                     className="px-2 py-1 text-xs bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
                   >
                     Buy Now
