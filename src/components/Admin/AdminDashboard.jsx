@@ -1,7 +1,14 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { FiAlertCircle, FiBell, FiTrendingUp } from "react-icons/fi";
-import { db } from '../../firebase';
-import { collection, getDocs, onSnapshot, updateDoc, doc } from "firebase/firestore";
+import { db } from "../../firebase";
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  updateDoc,
+  doc,
+  query,
+} from "firebase/firestore";
 
 // Default empty data
 const defaultSales = [];
@@ -25,7 +32,7 @@ export default function AdminDashboard() {
     month: 0,
     pendingOrders: 0,
     completedOrders: 0,
-    totalOrders: 0
+    totalOrders: 0,
   });
   const [popularProducts, setPopularProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,87 +42,122 @@ export default function AdminDashboard() {
     const fetchOrderData = () => {
       try {
         setLoading(true);
-        
+
         // Set up real-time listener for orders collection
-        const unsubscribe = onSnapshot(collection(db, "orders"), (snapshot) => {
-          console.log("Orders snapshot received:", snapshot.docs.length, "documents");
-          
-          const ordersData = [];
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            console.log("Raw Firebase order data:", data);
-            
-            ordersData.push({
-              id: doc.id,
-              ...data,
-              orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : 
-                        data.createdAt?.toDate ? data.createdAt.toDate() : 
-                        new Date(data.orderDate || data.createdAt || Date.now()),
-              productName: data.productName || data['Product name'] || data.name || data.title || 'Unknown Product',
-              totalPrice: data.totalPrice || data['Total price'] || data.totalAmount || data.amount || data.price || 0,
-              status: data.status || data.Status || 'Complete',
-              productType: data.productType || data.Type || data.type || 'product',
-              quantity: data.quantity || data.Quantity || 1,
-              userId: data.userId || data.uId || data.uid || ''
+        const unsubscribe = onSnapshot(
+          collection(db, "orders"),
+          (snapshot) => {
+            console.log(
+              "Orders snapshot received:",
+              snapshot.docs.length,
+              "documents"
+            );
+
+            const ordersData = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              console.log("Raw Firebase order data:", data);
+
+              ordersData.push({
+                id: doc.id,
+                ...data,
+                orderDate: data.orderDate?.toDate
+                  ? data.orderDate.toDate()
+                  : data.createdAt?.toDate
+                  ? data.createdAt.toDate()
+                  : new Date(data.orderDate || data.createdAt || Date.now()),
+                productName:
+                  data.productName ||
+                  data["Product name"] ||
+                  data.name ||
+                  data.title ||
+                  "Unknown Product",
+                totalPrice:
+                  data.totalPrice ||
+                  data["Total price"] ||
+                  data.totalAmount ||
+                  data.amount ||
+                  data.price ||
+                  0,
+                status: data.status || data.Status || "Complete",
+                productType:
+                  data.productType || data.Type || data.type || "product",
+                quantity: data.quantity || data.Quantity || 1,
+                userId: data.userId || data.uId || data.uid || "",
+              });
+              console.log(
+                "Processed order:",
+                ordersData[ordersData.length - 1]
+              );
             });
-            console.log("Processed order:", ordersData[ordersData.length - 1]);
-          });
-          
-          console.log("Processed orders data:", ordersData);
-          setOrders(ordersData);
-          
-          // Calculate revenue stats
-          const now = new Date();
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-          
-          const stats = {
-            today: ordersData
-              .filter(order => order.orderDate >= today)
-              .reduce((sum, order) => sum + (order.totalPrice || 0), 0),
-            week: ordersData
-              .filter(order => order.orderDate >= weekAgo)
-              .reduce((sum, order) => sum + (order.totalPrice || 0), 0),
-            month: ordersData
-              .filter(order => order.orderDate >= monthAgo)
-              .reduce((sum, order) => sum + (order.totalPrice || 0), 0),
-            pendingOrders: ordersData.filter(order => order.status === 'pending').length,
-            completedOrders: ordersData.filter(order => order.status !== 'pending').length,
-            totalOrders: ordersData.length
-          };
-          
-          console.log("Revenue stats:", stats);
-          setRevenueStats(stats);
-          
-          // Calculate popular products
-          const productMap = new Map();
-          ordersData.forEach(order => {
-            const productName = order.productName;
-            if (productName && productName !== 'Unknown Product') {
-              const existing = productMap.get(productName) || { 
-                name: productName, 
-                qty: 0
-              };
-              existing.qty += order.quantity || 1;
-              productMap.set(productName, existing);
-            }
-          });
-          
-          const popular = Array.from(productMap.values())
-            .sort((a, b) => b.qty - a.qty)
-            .slice(0, 5);
-          
-          console.log("Popular products:", popular);
-          setPopularProducts(popular);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error fetching orders:", error);
-          setOrders([]);
-          setPopularProducts([]);
-          setLoading(false);
-        });
-        
+
+            console.log("Processed orders data:", ordersData);
+            setOrders(ordersData);
+
+            // Calculate revenue stats
+            const now = new Date();
+            const today = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate()
+            );
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const monthAgo = new Date(
+              today.getTime() - 30 * 24 * 60 * 60 * 1000
+            );
+
+            const stats = {
+              today: ordersData
+                .filter((order) => order.orderDate >= today)
+                .reduce((sum, order) => sum + (order.totalPrice || 0), 0),
+              week: ordersData
+                .filter((order) => order.orderDate >= weekAgo)
+                .reduce((sum, order) => sum + (order.totalPrice || 0), 0),
+              month: ordersData
+                .filter((order) => order.orderDate >= monthAgo)
+                .reduce((sum, order) => sum + (order.totalPrice || 0), 0),
+              pendingOrders: ordersData.filter(
+                (order) => order.status === "pending"
+              ).length,
+              completedOrders: ordersData.filter(
+                (order) => order.status !== "pending"
+              ).length,
+              totalOrders: ordersData.length,
+            };
+
+            console.log("Revenue stats:", stats);
+            setRevenueStats(stats);
+
+            // Calculate popular products
+            const productMap = new Map();
+            ordersData.forEach((order) => {
+              const productName = order.productName;
+              if (productName && productName !== "Unknown Product") {
+                const existing = productMap.get(productName) || {
+                  name: productName,
+                  qty: 0,
+                };
+                existing.qty += order.quantity || 1;
+                productMap.set(productName, existing);
+              }
+            });
+
+            const popular = Array.from(productMap.values())
+              .sort((a, b) => b.qty - a.qty)
+              .slice(0, 5);
+
+            console.log("Popular products:", popular);
+            setPopularProducts(popular);
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Error fetching orders:", error);
+            setOrders([]);
+            setPopularProducts([]);
+            setLoading(false);
+          }
+        );
+
         // Return cleanup function
         return unsubscribe;
       } catch (error) {
@@ -125,10 +167,10 @@ export default function AdminDashboard() {
     };
 
     const unsubscribe = fetchOrderData();
-    
+
     // Cleanup listener on component unmount
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
+      if (unsubscribe && typeof unsubscribe === "function") {
         unsubscribe();
       }
     };
@@ -136,50 +178,53 @@ export default function AdminDashboard() {
 
   // Get sales data for charts using orders
   const [salesData, setSalesData] = useState([]);
-  
+
   useEffect(() => {
     const calculateSalesData = () => {
       try {
         const salesMap = new Map();
-        
-        orders.forEach(order => {
+
+        orders.forEach((order) => {
           const date = order.orderDate;
           let dateKey;
-          
-          if (salesFilter === 'yearly') {
+
+          if (salesFilter === "yearly") {
             dateKey = `${date.getFullYear()}-${date.getMonth()}`;
           } else {
             dateKey = date.toDateString();
           }
-          
-          const existing = salesMap.get(dateKey) || { 
-            date: salesFilter === 'yearly' 
-              ? new Date(date.getFullYear(), date.getMonth(), 1)
-              : date, 
-            amount: 0 
+
+          const existing = salesMap.get(dateKey) || {
+            date:
+              salesFilter === "yearly"
+                ? new Date(date.getFullYear(), date.getMonth(), 1)
+                : date,
+            amount: 0,
           };
           existing.amount += order.totalPrice || 0;
           salesMap.set(dateKey, existing);
         });
-        
-        let sales = Array.from(salesMap.values()).sort((a, b) => a.date - b.date);
-        
+
+        let sales = Array.from(salesMap.values()).sort(
+          (a, b) => a.date - b.date
+        );
+
         // Filter based on period
-        if (salesFilter === 'weekly') {
+        if (salesFilter === "weekly") {
           sales = sales.slice(-7);
-        } else if (salesFilter === 'monthly') {
+        } else if (salesFilter === "monthly") {
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          sales = sales.filter(sale => sale.date >= thirtyDaysAgo);
+          sales = sales.filter((sale) => sale.date >= thirtyDaysAgo);
         }
-        
+
         setSalesData(sales);
       } catch (error) {
         console.error("Error calculating sales data:", error);
         setSalesData([]);
       }
     };
-    
+
     if (orders.length > 0) {
       calculateSalesData();
     } else {
@@ -207,10 +252,10 @@ export default function AdminDashboard() {
   }, []);
 
   // Responsive bar chart width for large screens
-  const chartBarWidth = salesValues.length > 0 ? Math.max(
-    36,
-    Math.floor(window.innerWidth / (salesValues.length * 2.5))
-  ) : 36;
+  const chartBarWidth =
+    salesValues.length > 0
+      ? Math.max(36, Math.floor(window.innerWidth / (salesValues.length * 2.5)))
+      : 36;
   const chartSvgWidth = Math.max(salesValues.length * chartBarWidth, 300);
 
   // Utility function to update orders without payment method
@@ -219,48 +264,63 @@ export default function AdminDashboard() {
       const ordersSnapshot = await getDocs(collection(db, "orders"));
       let updatedCount = 0;
       let checkedCount = 0;
-      
+
       console.log("🔍 Checking orders for payment method data...");
-      
+
       for (const docRef of ordersSnapshot.docs) {
         const order = docRef.data();
         checkedCount++;
-        
+
         console.log(`Order ${docRef.id}:`, {
           paymentMethod: order.paymentMethod,
           paymentStatus: order.paymentStatus,
-          productName: order.productName
+          productName: order.productName,
         });
-        
+
         // Update if payment method is missing, empty, or set to old values
-        const needsUpdate = !order.paymentMethod || 
-                           order.paymentMethod === '' || 
-                           order.paymentMethod === 'cash_on_delivery' ||
-                           !order.paymentStatus || 
-                           order.paymentStatus === '' ||
-                           order.paymentStatus === 'completed';
-        
+        const needsUpdate =
+          !order.paymentMethod ||
+          order.paymentMethod === "" ||
+          order.paymentMethod === "cash_on_delivery" ||
+          !order.paymentStatus ||
+          order.paymentStatus === "" ||
+          order.paymentStatus === "completed";
+
         if (needsUpdate) {
-          const newPaymentMethod = order.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : 
-                                  (order.paymentMethod || 'Cash on Delivery');
-          const newPaymentStatus = order.paymentStatus === 'completed' ? 'Completed' : 
-                                  (order.paymentStatus || 'Completed');
-          
+          const newPaymentMethod =
+            order.paymentMethod === "cash_on_delivery"
+              ? "Cash on Delivery"
+              : order.paymentMethod || "Cash on Delivery";
+          const newPaymentStatus =
+            order.paymentStatus === "completed"
+              ? "Completed"
+              : order.paymentStatus || "Completed";
+
           console.log(`Updating order ${docRef.id}:`, {
-            from: { paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus },
-            to: { paymentMethod: newPaymentMethod, paymentStatus: newPaymentStatus }
+            from: {
+              paymentMethod: order.paymentMethod,
+              paymentStatus: order.paymentStatus,
+            },
+            to: {
+              paymentMethod: newPaymentMethod,
+              paymentStatus: newPaymentStatus,
+            },
           });
-          
+
           await updateDoc(doc(db, "orders", docRef.id), {
             paymentMethod: newPaymentMethod,
-            paymentStatus: newPaymentStatus
+            paymentStatus: newPaymentStatus,
           });
           updatedCount++;
         }
       }
-      
-      console.log(`✅ Checked ${checkedCount} orders, updated ${updatedCount} orders`);
-      alert(`Checked ${checkedCount} orders and updated ${updatedCount} with proper payment method format.`);
+
+      console.log(
+        `✅ Checked ${checkedCount} orders, updated ${updatedCount} orders`
+      );
+      alert(
+        `Checked ${checkedCount} orders and updated ${updatedCount} with proper payment method format.`
+      );
     } catch (error) {
       console.error("Error updating historical orders:", error);
       alert("Error updating orders. Check console for details.");
@@ -279,7 +339,7 @@ export default function AdminDashboard() {
           Fix Payment Data
         </button>
       </div>
-      
+
       {loading && (
         <div className="text-center py-8">
           <div className="text-lg text-gray-500">Loading dashboard data...</div>
@@ -313,7 +373,9 @@ export default function AdminDashboard() {
           </div>
           <div className="text-sm text-slate-500 mt-2">
             Completed Orders:{" "}
-            <span className="font-bold text-black">{revenueStats.completedOrders}</span>
+            <span className="font-bold text-black">
+              {revenueStats.completedOrders}
+            </span>
           </div>
         </div>
       </div>
@@ -341,7 +403,9 @@ export default function AdminDashboard() {
           {salesValues.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-gray-500 mb-2">No sales data available</div>
-              <div className="text-sm text-gray-400">Sales will appear here when customers make purchases</div>
+              <div className="text-sm text-gray-400">
+                Sales will appear here when customers make purchases
+              </div>
             </div>
           ) : (
             <div className="relative w-full">
@@ -368,7 +432,10 @@ export default function AdminDashboard() {
                 ))}
                 {/* Bars */}
                 {salesValues.map((v, i) => {
-                  const barHeight = Math.max(4, Math.round((v / maxSale) * 100));
+                  const barHeight = Math.max(
+                    4,
+                    Math.round((v / maxSale) * 100)
+                  );
                   return (
                     <rect
                       key={i}
@@ -440,7 +507,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* User Registration Line Chart - Hidden since no real data */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-blue-50" style={{display: 'none'}}>
+      <div
+        className="bg-white rounded-xl shadow-sm p-6 border border-blue-50"
+        style={{ display: "none" }}
+      >
         <h2 className="text-lg font-semibold text-blue- mb-4">
           User Registration Over Time
         </h2>
@@ -450,7 +520,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Alerts & Notifications - Hidden since no real data */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-blue-50" style={{display: 'none'}}>
+      <div
+        className="bg-white rounded-xl shadow-sm p-6 border border-blue-50"
+        style={{ display: "none" }}
+      >
         <h2 className="text-lg font-semibold text-blue- mb-4">
           Alerts & Notifications
         </h2>
@@ -483,12 +556,17 @@ export default function AdminDashboard() {
                   <td className="px-4 py-2">{order.id.substring(0, 8)}...</td>
                   <td className="px-4 py-2 text-black">{order.productName}</td>
                   <td className="px-4 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.productType === 'pesticide' ? 'bg-green-100 text-green-800' :
-                      order.productType === 'equipment' ? 'bg-purple-100 text-purple-800' :
-                      order.productType === 'fertilizer' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        order.productType === "pesticide"
+                          ? "bg-green-100 text-green-800"
+                          : order.productType === "equipment"
+                          ? "bg-purple-100 text-purple-800"
+                          : order.productType === "fertilizer"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
                       {order.productType}
                     </span>
                   </td>
@@ -496,18 +574,27 @@ export default function AdminDashboard() {
                     {formatCurrency(order.totalPrice)}
                   </td>
                   <td className="px-4 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                      order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                      order.status === 'confirmed' ? 'bg-purple-100 text-purple-700' :
-                      order.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                      order.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        order.status === "delivered"
+                          ? "bg-green-100 text-green-700"
+                          : order.status === "shipped"
+                          ? "bg-blue-100 text-blue-700"
+                          : order.status === "confirmed"
+                          ? "bg-purple-100 text-purple-700"
+                          : order.status === "processing"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : order.status === "pending"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-4 py-2">{order.orderDate.toLocaleDateString()}</td>
+                  <td className="px-4 py-2">
+                    {order.orderDate.toLocaleDateString()}
+                  </td>
                 </tr>
               ))}
               {orders.length === 0 && (
@@ -516,7 +603,8 @@ export default function AdminDashboard() {
                     colSpan={6}
                     className="py-8 text-center text-sm text-slate-400"
                   >
-                    No orders found. Orders will appear here when customers make purchases.
+                    No orders found. Orders will appear here when customers make
+                    purchases.
                   </td>
                 </tr>
               )}
